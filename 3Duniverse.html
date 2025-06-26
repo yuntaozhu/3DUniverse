@@ -199,13 +199,13 @@
           <label for="showConnections">显示连线</label>
       </div>
       
+      <button id="resetBtn">重置星系</button>
       <button id="regenerateBtn">重新生成连线</button>
   </div>
   
   <div class="info">
           <h4>欢迎来到手势控制的星系</h4>
-          <p>• 左手握拳再展开：切换连线显示<br>
-             • 右手握拳再展开：触发超新星<br>
+          <p>• 右手握拳再展开：触发超新星<br>
              • 挥动双手：引导粒子运动<br>
              • 使用控制台调整参数<br>
              • 按空格键暂停/继续</p>
@@ -280,11 +280,6 @@
                   if (handedness === 'Left') {
                       leftHandPrevClosed = leftHandClosed;
                       leftHandClosed = isClosed;
-                      // 检测左手握拳到展开的动作
-                      if (leftHandPrevClosed && !leftHandClosed) {
-                          showConnections = !showConnections;
-                          document.getElementById('showConnections').checked = showConnections;
-                      }
                   } else {
                       rightHandPrevClosed = rightHandClosed;
                       rightHandClosed = isClosed;
@@ -701,6 +696,8 @@
           }
       });
       
+      document.getElementById('resetBtn').addEventListener('click', createParticles);
+
       document.getElementById('regenerateBtn').addEventListener('click', () => {
           generateRandomConnections();
           createConnections();
