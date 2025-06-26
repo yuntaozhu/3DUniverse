@@ -205,7 +205,7 @@
   
   <div class="info">
           <h4>欢迎来到手势控制的星系</h4>
-          <p>• 右手握拳再展开：触发超新星<br>
+          <p>• 右手握拳再展开：触发超新星 (爆炸后再次握拳可吸引粒子)<br>
              • 挥动双手：引导粒子运动<br>
              • 使用控制台调整参数<br>
              • 按空格键暂停/继续</p>
@@ -264,6 +264,8 @@
       let leftHandPrevClosed = false;
       let rightHandPrevClosed = false;
       let lastRightHandTriggerTime = 0; // 记录右手触发超新星的时间
+      let supernovaActive = false;
+      let rightHandAttractor = null;
 
       function onResults(results) {
           // 清除旧的手势网格
@@ -281,15 +283,33 @@
                       leftHandPrevClosed = leftHandClosed;
                       leftHandClosed = isClosed;
                   } else {
-                      rightHandPrevClosed = rightHandClosed;
-                      rightHandClosed = isClosed;
-                      // 检测右手握拳到展开的动作
-                      const now = Date.now();
-                      if (rightHandPrevClosed && !rightHandClosed && (now - lastRightHandTriggerTime > 100000)) {
-                          triggerSupernova(); // 触发超新星
-                          lastRightHandTriggerTime = now; // 更新触发时间
+                          rightHandPrevClosed = rightHandClosed;
+                          rightHandClosed = isClosed;
+                          
+                          // 检测右手握拳到展开的动作
+                          if (rightHandPrevClosed && !rightHandClosed) {
+                              const now = Date.now();
+                              if (now - lastRightHandTriggerTime > 100000) { // 100秒冷却
+                                  triggerSupernova();
+                                  lastRightHandTriggerTime = now;
+                              }
+                          }
+
+                          // 右手握拳时，如果超新星已激活，则作为吸引子
+                          if (rightHandClosed && supernovaActive) {
+                              const centerX = landmarks.reduce((sum, lm) => sum + lm.x, 0) / landmarks.length;
+                              const centerY = landmarks.reduce((sum, lm) => sum + lm.y, 0) / landmarks.length;
+                              const centerZ = landmarks.reduce((sum, lm) => sum + lm.z, 0) / landmarks.length;
+                              rightHandAttractor = new THREE.Vector3(
+                                  (1 - centerX) * 100 - 50,
+                                  centerY * -100 + 50,
+                                  centerZ * 50
+                              );
+                          } else if (!rightHandClosed) {
+                              // 手展开时移除吸引
+                              rightHandAttractor = null;
+                          }
                       }
-                  }
                   const handGroup = new THREE.Group();
 
                   // 创建材质
@@ -376,6 +396,8 @@
       
       // 创建粒子系统
       function createParticles() {
+          supernovaActive = false;
+          rightHandAttractor = null;
           if (particles) {
               scene.remove(particles);
               particleGeometry.dispose();
@@ -585,6 +607,7 @@
       
       // 超新星爆炸效果
       function triggerSupernova() {
+          supernovaActive = true;
           const positions = particles.geometry.attributes.position.array;
           
           for (let i = 0; i < particleCount; i++) {
@@ -621,13 +644,19 @@
               
 
               
-              // 中心引力
-              const centerDistance = Math.sqrt(x * x + y * y + z * z);
-              if (centerDistance > 0.1) {
-                  const centerForce = 0.01 / centerDistance;
-                  velocities[i].x -= x * centerForce;
-                  velocities[i].y -= y * centerForce * 0.1;
-                  velocities[i].z -= z * centerForce;
+              // 如果右手吸引子存在，则粒子向吸引子运动
+              if (rightHandAttractor) {
+                  const attractorForce = new THREE.Vector3().subVectors(rightHandAttractor, new THREE.Vector3(x, y, z)).normalize().multiplyScalar(0.3);
+                  velocities[i].add(attractorForce);
+              } else {
+                  // 中心引力
+                  const centerDistance = Math.sqrt(x * x + y * y + z * z);
+                  if (centerDistance > 0.1) {
+                      const centerForce = 0.01 / centerDistance;
+                      velocities[i].x -= x * centerForce;
+                      velocities[i].y -= y * centerForce * 0.1;
+                      velocities[i].z -= z * centerForce;
+                  }
               }
               
               // 阻尼
