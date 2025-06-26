@@ -201,6 +201,7 @@
       
       <button id="resetBtn">重置星系</button>
       <button id="regenerateBtn">重新生成连线</button>
+的      <button id="resetCooldownBtn">清除冷却</button>
   </div>
   
   <div class="info">
@@ -288,7 +289,7 @@
                       // 检测左手握拳到展开的动作
                       if (leftHandPrevClosed && !leftHandClosed) {
                           const now = Date.now();
-                          if (now - lastLeftHandTriggerTime > 100000) { // 100秒冷却
+                          if (now - lastLeftHandTriggerTime > 30000) { // 30秒冷却
                               triggerSupernova();
                               lastLeftHandTriggerTime = now;
                           }
@@ -738,6 +739,10 @@
           generateRandomConnections();
           createConnections();
       });
+
+      document.getElementById('resetCooldownBtn').addEventListener('click', () => {
+          lastLeftHandTriggerTime = 0;
+      });
       
       // 窗口大小调整
       window.addEventListener('resize', () => {
@@ -753,7 +758,7 @@
 
           // 更新状态显示
           const now = Date.now();
-          const cooldownTime = Math.max(0, 100 - (now - lastLeftHandTriggerTime) / 1000).toFixed(1);
+          const cooldownTime = Math.max(0, 30 - (now - lastLeftHandTriggerTime) / 1000).toFixed(1);
           document.getElementById('cooldown-status').textContent = `超新星冷却: ${cooldownTime}s`;
 
           let interactionState = "常规引力";
