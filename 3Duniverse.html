@@ -12,7 +12,7 @@
       }
       
       body {
-          background-color: #000000;
+          background-color: transparent;
           color: #44ffbb;
           font-family: 'Arial', sans-serif;
           overflow: hidden;
@@ -25,6 +25,7 @@
           left: 0;
           width: 100%;
           height: 100%;
+          z-index: 1;
       }
       
       .controls {
@@ -148,6 +149,7 @@
           width: 100%;
           height: 100%;
           z-index: -1;
+          background-color: #000;
       }
 
       #video {
@@ -203,16 +205,16 @@
   </div>
   
   <div class="info">
-      <h4>欢迎来到星系模拟器</h4>
-      <p>• 移动鼠标来引导粒子流动<br>
-         • 点击屏幕产生引力波<br>
-         • 使用控制台调整星系参数<br>
-         • 按空格键暂停/继续<br>
-         • 大节点有更多连线，小节点连线较少</p>
-  </div>
+          <h4>欢迎来到手势控制的星系</h4>
+          <p>• 在摄像头前挥动你的手来引导粒子<br>
+             • 使用控制台调整星系参数<br>
+             • 按空格键暂停/继续<br>
+             • 大节点有更多连线，小节点连线较少</p>
+      </div>
   
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
   <script>
       const videoElement = document.getElementById('video');
@@ -233,27 +235,61 @@
 
       hands.onResults(onResults);
 
+      const { HAND_CONNECTIONS } = window;
+
       // 设置摄像头
-      const camera = new Camera(videoElement, {
+      const mediaPipeCamera = new Camera(videoElement, {
           onFrame: async () => {
               await hands.send({ image: videoElement });
           },
           width: 1280,
           height: 720
       });
-      camera.start();
+      mediaPipeCamera.start();
 
       function onResults(results) {
+          // 清除旧的手势网格
+          handMeshes.forEach(mesh => scene.remove(mesh));
+          handMeshes = [];
+
           if (results.multiHandLandmarks) {
               for (const landmarks of results.multiHandLandmarks) {
-                  // 将手势关键点从归一化坐标转换到世界坐标
+                  const handGroup = new THREE.Group();
+
+                  // 创建材质
+                  const lineMaterial = new THREE.LineBasicMaterial({ color: 0x44ffbb });
+                  const pointMaterial = new THREE.MeshBasicMaterial({ color: 0x44ffbb });
+
+                  // 转换关键点并创建点和线
+                  const points = landmarks.map(lm => new THREE.Vector3((1 - lm.x) * 100 - 50, lm.y * -100 + 50, lm.z * 50));
+
+                  // 创建点
+                  points.forEach(point => {
+                      const geometry = new THREE.SphereGeometry(0.5, 16, 16);
+                      const mesh = new THREE.Mesh(geometry, pointMaterial);
+                      mesh.position.copy(point);
+                      handGroup.add(mesh);
+                  });
+
+                  // 创建连接线
+                  HAND_CONNECTIONS.forEach(connection => {
+                      const startPoint = points[connection[0]];
+                      const endPoint = points[connection[1]];
+                      const geometry = new THREE.BufferGeometry().setFromPoints([startPoint, endPoint]);
+                      const line = new THREE.Line(geometry, lineMaterial);
+                      handGroup.add(line);
+                  });
+
+                  scene.add(handGroup);
+                  handMeshes.push(handGroup);
+
+                  // 用手势影响粒子
                   for (let i = 0; i < landmarks.length; i++) {
                       const landmark = landmarks[i];
-                      const handX = landmark.x * 100 - 50;
+                      const handX = (1 - landmark.x) * 100 - 50;
                       const handY = landmark.y * -100 + 50;
                       const handZ = landmark.z * 50;
 
-                      // 用手势影响粒子
                       const positions = particles.geometry.attributes.position.array;
                       for (let j = 0; j < particleCount; j++) {
                           const dx = positions[j * 3] - handX;
@@ -261,8 +297,8 @@
                           const dz = positions[j * 3 + 2] - handZ;
                           const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
-                          if (distance < 5) { // 影响范围
-                              const force = (5 - distance) * 0.01; // 影响强度
+                          if (distance < 5) {
+                              const force = (5 - distance) * 0.01;
                               velocities[j].x += dx * force;
                               velocities[j].y += dy * force;
                               velocities[j].z += dz * force;
@@ -276,7 +312,7 @@
       // 场景设置
       const scene = new THREE.Scene();
       const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-      const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas'), antialias: true });
+      const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas'), antialias: true, alpha: true });
       renderer.setSize(window.innerWidth, window.innerHeight);
       renderer.setPixelRatio(window.devicePixelRatio);
       
@@ -294,15 +330,13 @@
       let showConnections = true;
       let isPaused = false;
       
-      // 鼠标位置
-      const mouse = new THREE.Vector2();
-      const mouseWorld = new THREE.Vector3();
-      let isMouseDown = false;
+
       
       // 粒子速度和大小数组
       let velocities = [];
       let particleSizes = [];
       let connectionPairs = []; // 存储连线对
+      let handMeshes = []; // 存储手势网格
       
       // 创建粒子系统
       function createParticles() {
@@ -549,20 +583,7 @@
               const y = positions[idx + 1];
               const z = positions[idx + 2];
               
-              // 鼠标引力
-              if (isMouseDown) {
-                  const dx = mouseWorld.x - x;
-                  const dy = mouseWorld.y - y;
-                  const dz = mouseWorld.z - z;
-                  const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-                  
-                  if (distance > 0.1) {
-                      const force = gravityStrength * 0.5 / (distance * distance);
-                      velocities[i].x += dx * force;
-                      velocities[i].y += dy * force;
-                      velocities[i].z += dz * force;
-                  }
-              }
+
               
               // 中心引力
               const centerDistance = Math.sqrt(x * x + y * y + z * z);
@@ -596,21 +617,7 @@
           updateConnections();
       }
       
-      // 鼠标事件
-      document.addEventListener('mousemove', (e) => {
-          mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
-          mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
-          
-          mouseWorld.set(mouse.x * 30, mouse.y * 20, 0);
-      });
-      
-      document.addEventListener('mousedown', () => {
-          isMouseDown = true;
-      });
-      
-      document.addEventListener('mouseup', () => {
-          isMouseDown = false;
-      });
+
       
       document.addEventListener('keydown', (e) => {
           if (e.code === 'Space') {
