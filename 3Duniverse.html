@@ -442,9 +442,9 @@
               
               // 初始速度
               velocities.push(new THREE.Vector3(
-                  (Math.random() - 0.5) * 0.02,
-                  (Math.random() - 0.5) * 0.02,
-                  (Math.random() - 0.5) * 0.02
+                  (Math.random() - 0.5) * 0.05,
+                  (Math.random() - 0.5) * 0.05,
+                  (Math.random() - 0.5) * 0.05
               ));
           }
           
@@ -650,6 +650,11 @@
               if (leftHandAttractor) {
                   const attractorForce = new THREE.Vector3().subVectors(leftHandAttractor, new THREE.Vector3(x, y, z)).normalize().multiplyScalar(0.15);
                   velocities[i].add(attractorForce);
+
+                  // Add some random jitter
+                  velocities[i].x += (Math.random() - 0.5) * 0.05;
+                  velocities[i].y += (Math.random() - 0.5) * 0.05;
+                  velocities[i].z += (Math.random() - 0.5) * 0.05;
               } else {
                   // 中心引力
                   const centerDistance = Math.sqrt(x * x + y * y + z * z);
