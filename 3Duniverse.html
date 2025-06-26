@@ -205,7 +205,7 @@
   
   <div class="info">
           <h4>欢迎来到手势控制的星系</h4>
-          <p>• 右手握拳再展开：触发超新星 (爆炸后再次握拳可吸引粒子)<br>
+          <p>• 左手握拳再展开：触发超新星 (爆炸后再次握拳可吸引粒子)<br>
           <p id="cooldown-status"></p>
           <p id="interaction-status"></p>
              • 挥动双手：引导粒子运动<br>
@@ -265,9 +265,9 @@
       let rightHandClosed = false;
       let leftHandPrevClosed = false;
       let rightHandPrevClosed = false;
-      let lastRightHandTriggerTime = 0; // 记录右手触发超新星的时间
+      let lastLeftHandTriggerTime = 0; // 记录左手触发超新星的时间
       let supernovaActive = false;
-      let rightHandAttractor = null;
+      let leftHandAttractor = null;
 
       function onResults(results) {
           // 清除旧的手势网格
@@ -284,34 +284,34 @@
                   if (handedness === 'Left') {
                       leftHandPrevClosed = leftHandClosed;
                       leftHandClosed = isClosed;
-                  } else {
-                          rightHandPrevClosed = rightHandClosed;
-                          rightHandClosed = isClosed;
-                          
-                          // 检测右手握拳到展开的动作
-                          if (rightHandPrevClosed && !rightHandClosed) {
-                              const now = Date.now();
-                              if (now - lastRightHandTriggerTime > 100000) { // 100秒冷却
-                                  triggerSupernova();
-                                  lastRightHandTriggerTime = now;
-                              }
-                          }
 
-                          // 右手握拳时，如果超新星已激活，则作为吸引子
-                          if (rightHandClosed && supernovaActive) {
-                              const centerX = landmarks.reduce((sum, lm) => sum + lm.x, 0) / landmarks.length;
-                              const centerY = landmarks.reduce((sum, lm) => sum + lm.y, 0) / landmarks.length;
-                              const centerZ = landmarks.reduce((sum, lm) => sum + lm.z, 0) / landmarks.length;
-                              rightHandAttractor = new THREE.Vector3(
-                                  (1 - centerX) * 100 - 50,
-                                  centerY * -100 + 50,
-                                  centerZ * 50
-                              );
-                          } else if (!rightHandClosed) {
-                              // 手展开时移除吸引
-                              rightHandAttractor = null;
+                      // 检测左手握拳到展开的动作
+                      if (leftHandPrevClosed && !leftHandClosed) {
+                          const now = Date.now();
+                          if (now - lastLeftHandTriggerTime > 100000) { // 100秒冷却
+                              triggerSupernova();
+                              lastLeftHandTriggerTime = now;
                           }
                       }
+
+                      // 左手握拳时，如果超新星已激活，则作为吸引子
+                      if (leftHandClosed && supernovaActive) {
+                          const centerX = landmarks.reduce((sum, lm) => sum + lm.x, 0) / landmarks.length;
+                          const centerY = landmarks.reduce((sum, lm) => sum + lm.y, 0) / landmarks.length;
+                          const centerZ = landmarks.reduce((sum, lm) => sum + lm.z, 0) / landmarks.length;
+                          leftHandAttractor = new THREE.Vector3(
+                              (1 - centerX) * 100 - 50,
+                              centerY * -100 + 50,
+                              centerZ * 50
+                          );
+                      } else if (!leftHandClosed) {
+                          // 手展开时移除吸引
+                          leftHandAttractor = null;
+                      }
+                  } else {
+                      rightHandPrevClosed = rightHandClosed;
+                      rightHandClosed = isClosed;
+                  }
                   const handGroup = new THREE.Group();
 
                   // 创建材质
@@ -399,7 +399,7 @@
       // 创建粒子系统
       function createParticles() {
           supernovaActive = false;
-          rightHandAttractor = null;
+          leftHandAttractor = null;
           if (particles) {
               scene.remove(particles);
               particleGeometry.dispose();
@@ -646,9 +646,9 @@
               
 
               
-              // 如果右手吸引子存在，则粒子向吸引子运动
-              if (rightHandAttractor) {
-                  const attractorForce = new THREE.Vector3().subVectors(rightHandAttractor, new THREE.Vector3(x, y, z)).normalize().multiplyScalar(0.3);
+              // 如果左手吸引子存在，则粒子向吸引子运动
+              if (leftHandAttractor) {
+                  const attractorForce = new THREE.Vector3().subVectors(leftHandAttractor, new THREE.Vector3(x, y, z)).normalize().multiplyScalar(0.15);
                   velocities[i].add(attractorForce);
               } else {
                   // 中心引力
@@ -748,12 +748,12 @@
 
           // 更新状态显示
           const now = Date.now();
-          const cooldownTime = Math.max(0, 100 - (now - lastRightHandTriggerTime) / 1000).toFixed(1);
+          const cooldownTime = Math.max(0, 100 - (now - lastLeftHandTriggerTime) / 1000).toFixed(1);
           document.getElementById('cooldown-status').textContent = `超新星冷却: ${cooldownTime}s`;
 
           let interactionState = "常规引力";
           if (supernovaActive) {
-              if (rightHandAttractor) {
+              if (leftHandAttractor) {
                   interactionState = "粒子加速汇集中";
               } else {
                   interactionState = "超新星爆炸后";
