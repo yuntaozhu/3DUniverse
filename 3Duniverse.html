@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>交互式3D粒子星系 - 带随机连线</title>
+  <style>
+      * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+      }
+      
+      body {
+          background-color: #000000;
+          color: #44ffbb;
+          font-family: 'Arial', sans-serif;
+          overflow: hidden;
+          cursor: crosshair;
+      }
+      
+      #canvas {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+      }
+      
+      .controls {
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          background: rgba(0, 0, 0, 0.8);
+          border: 1px solid #44ffbb;
+          border-radius: 10px;
+          padding: 20px;
+          backdrop-filter: blur(10px);
+          z-index: 1000;
+          min-width: 250px;
+      }
+      
+      .controls h3 {
+          margin-bottom: 15px;
+          text-align: center;
+          text-shadow: 0 0 10px #44ffbb;
+      }
+      
+      .control-item {
+          margin-bottom: 15px;
+      }
+      
+      .control-item label {
+          display: block;
+          margin-bottom: 5px;
+          font-size: 14px;
+      }
+      
+      .control-item input[type="range"] {
+          width: 100%;
+          -webkit-appearance: none;
+          height: 5px;
+          background: #333;
+          outline: none;
+          border-radius: 5px;
+      }
+      
+      .control-item input[type="range"]::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          width: 15px;
+          height: 15px;
+          background: #44ffbb;
+          border-radius: 50%;
+          cursor: pointer;
+          box-shadow: 0 0 10px #44ffbb;
+      }
+      
+      .control-item input[type="range"]::-moz-range-thumb {
+          width: 15px;
+          height: 15px;
+          background: #44ffbb;
+          border-radius: 50%;
+          cursor: pointer;
+          box-shadow: 0 0 10px #44ffbb;
+      }
+      
+      .value {
+          color: #88ffdd;
+          font-size: 12px;
+      }
+      
+      .info {
+          position: fixed;
+          bottom: 20px;
+          left: 20px;
+          background: rgba(0, 0, 0, 0.8);
+          border: 1px solid #44ffbb;
+          border-radius: 10px;
+          padding: 15px;
+          backdrop-filter: blur(10px);
+          max-width: 300px;
+      }
+      
+      .info h4 {
+          margin-bottom: 10px;
+          text-shadow: 0 0 10px #44ffbb;
+      }
+      
+      .info p {
+          font-size: 14px;
+          line-height: 1.5;
+          opacity: 0.8;
+      }
+      
+      button {
+          background: transparent;
+          border: 1px solid #44ffbb;
+          color: #44ffbb;
+          padding: 8px 16px;
+          border-radius: 5px;
+          cursor: pointer;
+          transition: all 0.3s;
+          width: 100%;
+          margin-top: 10px;
+      }
+      
+      button:hover {
+          background: #44ffbb;
+          color: #000;
+          box-shadow: 0 0 20px #44ffbb;
+      }
+      
+      .checkbox-item {
+          display: flex;
+          align-items: center;
+          margin-bottom: 10px;
+      }
+      
+      .checkbox-item input[type="checkbox"] {
+          margin-right: 10px;
+          transform: scale(1.2);
+      }
+
+      #video-container {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          z-index: -1;
+      }
+
+      #video {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          transform: scaleX(-1);
+      }
+  </style>
+</head>
+<body>
+  <div id="video-container">
+      <video id="video" autoplay playsinline></video>
+  </div>
+  <canvas id="canvas"></canvas>
+  
+  <div class="controls">
+      <h3>星系控制台</h3>
+      
+      <div class="control-item">
+          <label>粒子数量: <span class="value" id="particleCountValue">2000</span></label>
+          <input type="range" id="particleCount" min="500" max="3000" value="2000" step="100">
+      </div>
+      
+      <div class="control-item">
+          <label>旋转速度: <span class="value" id="rotationSpeedValue">0.5</span></label>
+          <input type="range" id="rotationSpeed" min="0" max="2" value="0.5" step="0.1">
+      </div>
+      
+      <div class="control-item">
+          <label>引力强度: <span class="value" id="gravityValue">1.0</span></label>
+          <input type="range" id="gravity" min="0" max="3" value="1" step="0.1">
+      </div>
+      
+      <div class="control-item">
+          <label>连线概率: <span class="value" id="connectionProbabilityValue">15%</span></label>
+          <input type="range" id="connectionProbability" min="5" max="50" value="15" step="5">
+      </div>
+      
+      <div class="control-item">
+          <label>连线距离: <span class="value" id="connectionDistanceValue">12</span></label>
+          <input type="range" id="connectionDistance" min="5" max="20" value="12" step="1">
+      </div>
+      
+      <div class="checkbox-item">
+          <input type="checkbox" id="showConnections" checked>
+          <label for="showConnections">显示连线</label>
+      </div>
+      
+      <button id="resetBtn">重置星系</button>
+      <button id="explosionBtn">触发超新星</button>
+      <button id="regenerateBtn">重新生成连线</button>
+  </div>
+  
+  <div class="info">
+      <h4>欢迎来到星系模拟器</h4>
+      <p>• 移动鼠标来引导粒子流动<br>
+         • 点击屏幕产生引力波<br>
+         • 使用控制台调整星系参数<br>
+         • 按空格键暂停/继续<br>
+         • 大节点有更多连线，小节点连线较少</p>
+  </div>
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+  <script>
+      const videoElement = document.getElementById('video');
+
+      // 初始化 MediaPipe Hands
+      const hands = new Hands({
+          locateFile: (file) => {
+              return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+          }
+      });
+
+      hands.setOptions({
+          maxNumHands: 2,
+          modelComplexity: 1,
+          minDetectionConfidence: 0.5,
+          minTrackingConfidence: 0.5
+      });
+
+      hands.onResults(onResults);
+
+      // 设置摄像头
+      const camera = new Camera(videoElement, {
+          onFrame: async () => {
+              await hands.send({ image: videoElement });
+          },
+          width: 1280,
+          height: 720
+      });
+      camera.start();
+
+      function onResults(results) {
+          if (results.multiHandLandmarks) {
+              for (const landmarks of results.multiHandLandmarks) {
+                  // 将手势关键点从归一化坐标转换到世界坐标
+                  for (let i = 0; i < landmarks.length; i++) {
+                      const landmark = landmarks[i];
+                      const handX = landmark.x * 100 - 50;
+                      const handY = landmark.y * -100 + 50;
+                      const handZ = landmark.z * 50;
+
+                      // 用手势影响粒子
+                      const positions = particles.geometry.attributes.position.array;
+                      for (let j = 0; j < particleCount; j++) {
+                          const dx = positions[j * 3] - handX;
+                          const dy = positions[j * 3 + 1] - handY;
+                          const dz = positions[j * 3 + 2] - handZ;
+                          const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+                          if (distance < 5) { // 影响范围
+                              const force = (5 - distance) * 0.01; // 影响强度
+                              velocities[j].x += dx * force;
+                              velocities[j].y += dy * force;
+                              velocities[j].z += dz * force;
+                          }
+                      }
+                  }
+              }
+          }
+      }
+
+      // 场景设置
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+      const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas'), antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(window.devicePixelRatio);
+      
+      // 相机位置
+      camera.position.z = 50;
+      
+      // 粒子系统变量
+      let particles, particleGeometry, particleMaterial;
+      let connections, connectionGeometry, connectionMaterial;
+      let particleCount = 2000;
+      let rotationSpeed = 0.5;
+      let gravityStrength = 1.0;
+      let connectionDistance = 12;
+      let connectionProbability = 15; // 连线概率百分比
+      let showConnections = true;
+      let isPaused = false;
+      
+      // 鼠标位置
+      const mouse = new THREE.Vector2();
+      const mouseWorld = new THREE.Vector3();
+      let isMouseDown = false;
+      
+      // 粒子速度和大小数组
+      let velocities = [];
+      let particleSizes = [];
+      let connectionPairs = []; // 存储连线对
+      
+      // 创建粒子系统
+      function createParticles() {
+          if (particles) {
+              scene.remove(particles);
+              particleGeometry.dispose();
+              particleMaterial.dispose();
+          }
+          
+          if (connections) {
+              scene.remove(connections);
+              connectionGeometry.dispose();
+              connectionMaterial.dispose();
+          }
+          
+          particleGeometry = new THREE.BufferGeometry();
+          const positions = new Float32Array(particleCount * 3);
+          const colors = new Float32Array(particleCount * 3);
+          const sizes = new Float32Array(particleCount);
+          velocities = [];
+          particleSizes = [];
+          
+          // 创建螺旋星系形状
+          for (let i = 0; i < particleCount; i++) {
+              const angle = Math.random() * Math.PI * 2;
+              const radius = Math.random() * 30 + Math.random() * Math.random() * 20;
+              const armAngle = angle + radius * 0.2;
+              
+              positions[i * 3] = Math.cos(armAngle) * radius;
+              positions[i * 3 + 1] = (Math.random() - 0.5) * 5 * Math.exp(-radius / 20);
+              positions[i * 3 + 2] = Math.sin(armAngle) * radius;
+              
+              // 随机粒子大小，大小范围从0.5到4
+              const particleSize = 0.5 + Math.random() * 3.5;
+              sizes[i] = particleSize;
+              particleSizes.push(particleSize);
+              
+              // 颜色变化
+              const colorIntensity = 1 - radius / 50;
+              colors[i * 3] = 0.27 * colorIntensity;
+              colors[i * 3 + 1] = 1.0 * colorIntensity;
+              colors[i * 3 + 2] = 0.73 * colorIntensity;
+              
+              // 初始速度
+              velocities.push(new THREE.Vector3(
+                  (Math.random() - 0.5) * 0.02,
+                  (Math.random() - 0.5) * 0.02,
+                  (Math.random() - 0.5) * 0.02
+              ));
+          }
+          
+          particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+          particleGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+          particleGeometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+          
+          // 使用自定义着色器材质来支持不同大小的粒子
+          const vertexShader = `
+              attribute float size;
+              varying vec3 vColor;
+              
+              void main() {
+                  vColor = color;
+                  vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                  gl_PointSize = size * (300.0 / -mvPosition.z);
+                  gl_Position = projectionMatrix * mvPosition;
+              }
+          `;
+          
+          const fragmentShader = `
+              varying vec3 vColor;
+              
+              void main() {
+                  float r = 0.0, delta = 0.0, alpha = 1.0;
+                  vec2 cxy = 2.0 * gl_PointCoord - 1.0;
+                  r = dot(cxy, cxy);
+                  if (r > 1.0) {
+                      discard;
+                  }
+                  alpha = 1.0 - smoothstep(0.1, 1.0, r);
+                  gl_FragColor = vec4(vColor, alpha);
+              }
+          `;
+          
+          particleMaterial = new THREE.ShaderMaterial({
+              uniforms: {},
+              vertexShader: vertexShader,
+              fragmentShader: fragmentShader,
+              blending: THREE.AdditiveBlending,
+              depthTest: false,
+              transparent: true,
+              vertexColors: true
+          });
+          
+          particles = new THREE.Points(particleGeometry, particleMaterial);
+          scene.add(particles);
+          
+          // 生成随机连线
+          generateRandomConnections();
+          createConnections();
+      }
+      
+      // 生成随机连线对
+      function generateRandomConnections() {
+          connectionPairs = [];
+          
+          for (let i = 0; i < particleCount; i++) {
+              const positions = particles.geometry.attributes.position.array;
+              const x1 = positions[i * 3];
+              const y1 = positions[i * 3 + 1];
+              const z1 = positions[i * 3 + 2];
+              
+              // 大节点有更多连线机会
+              const nodeSize = particleSizes[i];
+              const connectionChance = (connectionProbability / 100) * (nodeSize / 2); // 基于节点大小调整连线概率
+              
+              for (let j = i + 1; j < particleCount; j++) {
+                  const x2 = positions[j * 3];
+                  const y2 = positions[j * 3 + 1];
+                  const z2 = positions[j * 3 + 2];
+                  
+                  // 计算距离
+                  const dx = x2 - x1;
+                  const dy = y2 - y1;
+                  const dz = z2 - z1;
+                  const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                  
+                  // 距离在范围内且随机概率满足条件
+                  if (distance < connectionDistance && Math.random() < connectionChance) {
+                      connectionPairs.push([i, j]);
+                  }
+              }
+          }
+      }
+      
+      // 创建连线系统
+      function createConnections() {
+          if (connections) {
+              scene.remove(connections);
+              connectionGeometry.dispose();
+              connectionMaterial.dispose();
+          }
+          
+          if (connectionPairs.length === 0) return;
+          
+          connectionGeometry = new THREE.BufferGeometry();
+          
+          const connectionPositions = new Float32Array(connectionPairs.length * 6);
+          const connectionColors = new Float32Array(connectionPairs.length * 6);
+          
+          // 设置连线颜色为50%透明度的#44ffbb
+          const lineColor = new THREE.Color(0x44ffbb);
+          
+          for (let i = 0; i < connectionPairs.length; i++) {
+              const [idx1, idx2] = connectionPairs[i];
+              const positions = particles.geometry.attributes.position.array;
+              
+              // 设置连线的两个端点
+              connectionPositions[i * 6] = positions[idx1 * 3];
+              connectionPositions[i * 6 + 1] = positions[idx1 * 3 + 1];
+              connectionPositions[i * 6 + 2] = positions[idx1 * 3 + 2];
+              connectionPositions[i * 6 + 3] = positions[idx2 * 3];
+              connectionPositions[i * 6 + 4] = positions[idx2 * 3 + 1];
+              connectionPositions[i * 6 + 5] = positions[idx2 * 3 + 2];
+              
+              // 设置连线颜色
+              connectionColors[i * 6] = lineColor.r;
+              connectionColors[i * 6 + 1] = lineColor.g;
+              connectionColors[i * 6 + 2] = lineColor.b;
+              connectionColors[i * 6 + 3] = lineColor.r;
+              connectionColors[i * 6 + 4] = lineColor.g;
+              connectionColors[i * 6 + 5] = lineColor.b;
+          }
+          
+          connectionGeometry.setAttribute('position', new THREE.BufferAttribute(connectionPositions, 3));
+          connectionGeometry.setAttribute('color', new THREE.BufferAttribute(connectionColors, 3));
+          
+          connectionMaterial = new THREE.LineBasicMaterial({
+              vertexColors: true,
+              transparent: true,
+              opacity: 0.5, // 50%透明度
+              blending: THREE.AdditiveBlending
+          });
+          
+          connections = new THREE.LineSegments(connectionGeometry, connectionMaterial);
+          connections.visible = showConnections;
+          scene.add(connections);
+      }
+      
+      // 更新连线位置
+      function updateConnections() {
+          if (!showConnections || !connections || connectionPairs.length === 0) return;
+          
+          const positions = particles.geometry.attributes.position.array;
+          const connectionPositions = connections.geometry.attributes.position.array;
+          
+          for (let i = 0; i < connectionPairs.length; i++) {
+              const [idx1, idx2] = connectionPairs[i];
+              
+              // 更新连线的两个端点位置
+              connectionPositions[i * 6] = positions[idx1 * 3];
+              connectionPositions[i * 6 + 1] = positions[idx1 * 3 + 1];
+              connectionPositions[i * 6 + 2] = positions[idx1 * 3 + 2];
+              connectionPositions[i * 6 + 3] = positions[idx2 * 3];
+              connectionPositions[i * 6 + 4] = positions[idx2 * 3 + 1];
+              connectionPositions[i * 6 + 5] = positions[idx2 * 3 + 2];
+          }
+          
+          connections.geometry.attributes.position.needsUpdate = true;
+      }
+      
+      // 超新星爆炸效果
+      function triggerSupernova() {
+          const positions = particles.geometry.attributes.position.array;
+          
+          for (let i = 0; i < particleCount; i++) {
+              const force = 5 + Math.random() * 10;
+              const angle = Math.random() * Math.PI * 2;
+              const theta = Math.random() * Math.PI;
+              
+              velocities[i].x += Math.sin(theta) * Math.cos(angle) * force;
+              velocities[i].y += Math.cos(theta) * force;
+              velocities[i].z += Math.sin(theta) * Math.sin(angle) * force;
+          }
+      }
+      
+      // 更新粒子
+      function updateParticles() {
+          if (isPaused) return;
+          
+          const positions = particles.geometry.attributes.position.array;
+          const colors = particles.geometry.attributes.color.array;
+          
+          // 旋转整个星系
+          particles.rotation.y += rotationSpeed * 0.001;
+          if (connections) {
+              connections.rotation.y += rotationSpeed * 0.001;
+          }
+          
+          for (let i = 0; i < particleCount; i++) {
+              const idx = i * 3;
+              
+              // 当前位置
+              const x = positions[idx];
+              const y = positions[idx + 1];
+              const z = positions[idx + 2];
+              
+              // 鼠标引力
+              if (isMouseDown) {
+                  const dx = mouseWorld.x - x;
+                  const dy = mouseWorld.y - y;
+                  const dz = mouseWorld.z - z;
+                  const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                  
+                  if (distance > 0.1) {
+                      const force = gravityStrength * 0.5 / (distance * distance);
+                      velocities[i].x += dx * force;
+                      velocities[i].y += dy * force;
+                      velocities[i].z += dz * force;
+                  }
+              }
+              
+              // 中心引力
+              const centerDistance = Math.sqrt(x * x + y * y + z * z);
+              if (centerDistance > 0.1) {
+                  const centerForce = 0.01 / centerDistance;
+                  velocities[i].x -= x * centerForce;
+                  velocities[i].y -= y * centerForce * 0.1;
+                  velocities[i].z -= z * centerForce;
+              }
+              
+              // 阻尼
+              velocities[i].multiplyScalar(0.98);
+              
+              // 更新位置
+              positions[idx] += velocities[i].x;
+              positions[idx + 1] += velocities[i].y;
+              positions[idx + 2] += velocities[i].z;
+              
+              // 更新颜色（基于速度）
+              const speed = velocities[i].length();
+              const colorIntensity = Math.min(1, 0.5 + speed * 10);
+              colors[idx] = 0.27 * colorIntensity;
+              colors[idx + 1] = 1.0 * colorIntensity;
+              colors[idx + 2] = 0.73 * colorIntensity;
+          }
+          
+          particles.geometry.attributes.position.needsUpdate = true;
+          particles.geometry.attributes.color.needsUpdate = true;
+          
+          // 更新连线
+          updateConnections();
+      }
+      
+      // 鼠标事件
+      document.addEventListener('mousemove', (e) => {
+          mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+          mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+          
+          mouseWorld.set(mouse.x * 30, mouse.y * 20, 0);
+      });
+      
+      document.addEventListener('mousedown', () => {
+          isMouseDown = true;
+      });
+      
+      document.addEventListener('mouseup', () => {
+          isMouseDown = false;
+      });
+      
+      document.addEventListener('keydown', (e) => {
+          if (e.code === 'Space') {
+              isPaused = !isPaused;
+              e.preventDefault();
+          }
+      });
+      
+      // 控制面板
+      document.getElementById('particleCount').addEventListener('input', (e) => {
+          particleCount = parseInt(e.target.value);
+          document.getElementById('particleCountValue').textContent = particleCount;
+          createParticles();
+      });
+      
+      document.getElementById('rotationSpeed').addEventListener('input', (e) => {
+          rotationSpeed = parseFloat(e.target.value);
+          document.getElementById('rotationSpeedValue').textContent = rotationSpeed;
+      });
+      
+      document.getElementById('gravity').addEventListener('input', (e) => {
+          gravityStrength = parseFloat(e.target.value);
+          document.getElementById('gravityValue').textContent = gravityStrength.toFixed(1);
+      });
+      
+      document.getElementById('connectionDistance').addEventListener('input', (e) => {
+          connectionDistance = parseFloat(e.target.value);
+          document.getElementById('connectionDistanceValue').textContent = connectionDistance;
+      });
+      
+      document.getElementById('connectionProbability').addEventListener('input', (e) => {
+          connectionProbability = parseFloat(e.target.value);
+          document.getElementById('connectionProbabilityValue').textContent = connectionProbability + '%';
+      });
+      
+      document.getElementById('showConnections').addEventListener('change', (e) => {
+          showConnections = e.target.checked;
+          if (connections) {
+              connections.visible = showConnections;
+          }
+      });
+      
+      document.getElementById('resetBtn').addEventListener('click', createParticles);
+      document.getElementById('explosionBtn').addEventListener('click', triggerSupernova);
+      document.getElementById('regenerateBtn').addEventListener('click', () => {
+          generateRandomConnections();
+          createConnections();
+      });
+      
+      // 窗口大小调整
+      window.addEventListener('resize', () => {
+          camera.aspect = window.innerWidth / window.innerHeight;
+          camera.updateProjectionMatrix();
+          renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+      
+      // 动画循环
+      function animate() {
+          requestAnimationFrame(animate);
+          updateParticles();
+          renderer.render(scene, camera);
+      }
+      
+      // 初始化
+      createParticles();
+      animate();
+  </script>
+</body>
+</html>
