@@ -199,17 +199,16 @@
           <label for="showConnections">显示连线</label>
       </div>
       
-      <button id="resetBtn">重置星系</button>
-      <button id="explosionBtn">触发超新星</button>
       <button id="regenerateBtn">重新生成连线</button>
   </div>
   
   <div class="info">
           <h4>欢迎来到手势控制的星系</h4>
-          <p>• 在摄像头前挥动你的手来引导粒子<br>
-             • 使用控制台调整星系参数<br>
-             • 按空格键暂停/继续<br>
-             • 大节点有更多连线，小节点连线较少</p>
+          <p>• 左手握拳再展开：重置星系<br>
+             • 右手握拳再展开：触发超新星<br>
+             • 挥动双手：引导粒子运动<br>
+             • 使用控制台调整参数<br>
+             • 按空格键暂停/继续</p>
       </div>
   
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -247,13 +246,54 @@
       });
       mediaPipeCamera.start();
 
+      // 检测手势是否握拳
+      function isHandClosed(landmarks) {
+          // 使用食指和中指的弯曲程度判断手势
+          const fingerTipY = landmarks[8].y; // 食指指尖
+          const fingerBaseY = landmarks[5].y; // 食指根部
+          const middleTipY = landmarks[12].y; // 中指指尖
+          const middleBaseY = landmarks[9].y; // 中指根部
+          
+          // 当指尖低于指根时，说明手指弯曲
+          return fingerTipY > fingerBaseY && middleTipY > middleBaseY;
+      }
+
+      // 存储手势状态
+      let leftHandClosed = false;
+      let rightHandClosed = false;
+      let leftHandPrevClosed = false;
+      let rightHandPrevClosed = false;
+      let lastRightHandTriggerTime = 0; // 记录右手触发超新星的时间
+
       function onResults(results) {
           // 清除旧的手势网格
           handMeshes.forEach(mesh => scene.remove(mesh));
           handMeshes = [];
 
           if (results.multiHandLandmarks) {
-              for (const landmarks of results.multiHandLandmarks) {
+              for (let i = 0; i < results.multiHandLandmarks.length; i++) {
+                  const landmarks = results.multiHandLandmarks[i];
+                  const handedness = results.multiHandedness[i].label;
+                  const isClosed = isHandClosed(landmarks);
+
+                  // 更新手势状态
+                  if (handedness === 'Left') {
+                      leftHandPrevClosed = leftHandClosed;
+                      leftHandClosed = isClosed;
+                      // 检测左手握拳到展开的动作
+                      if (leftHandPrevClosed && !leftHandClosed) {
+                          createParticles(); // 重置星系
+                      }
+                  } else {
+                      rightHandPrevClosed = rightHandClosed;
+                      rightHandClosed = isClosed;
+                      // 检测右手握拳到展开的动作
+                      const now = Date.now();
+                      if (rightHandPrevClosed && !rightHandClosed && (now - lastRightHandTriggerTime > 100000)) {
+                          triggerSupernova(); // 触发超新星
+                          lastRightHandTriggerTime = now; // 更新触发时间
+                      }
+                  }
                   const handGroup = new THREE.Group();
 
                   // 创建材质
@@ -660,8 +700,6 @@
           }
       });
       
-      document.getElementById('resetBtn').addEventListener('click', createParticles);
-      document.getElementById('explosionBtn').addEventListener('click', triggerSupernova);
       document.getElementById('regenerateBtn').addEventListener('click', () => {
           generateRandomConnections();
           createConnections();
