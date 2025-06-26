@@ -206,6 +206,8 @@
   <div class="info">
           <h4>欢迎来到手势控制的星系</h4>
           <p>• 右手握拳再展开：触发超新星 (爆炸后再次握拳可吸引粒子)<br>
+          <p id="cooldown-status"></p>
+          <p id="interaction-status"></p>
              • 挥动双手：引导粒子运动<br>
              • 使用控制台调整参数<br>
              • 按空格键暂停/继续</p>
@@ -743,6 +745,22 @@
       function animate() {
           requestAnimationFrame(animate);
           updateParticles();
+
+          // 更新状态显示
+          const now = Date.now();
+          const cooldownTime = Math.max(0, 100 - (now - lastRightHandTriggerTime) / 1000).toFixed(1);
+          document.getElementById('cooldown-status').textContent = `超新星冷却: ${cooldownTime}s`;
+
+          let interactionState = "常规引力";
+          if (supernovaActive) {
+              if (rightHandAttractor) {
+                  interactionState = "粒子加速汇集中";
+              } else {
+                  interactionState = "超新星爆炸后";
+              }
+          }
+          document.getElementById('interaction-status').textContent = `当前状态: ${interactionState}`;
+
           renderer.render(scene, camera);
       }
       
