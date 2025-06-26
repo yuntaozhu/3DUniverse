@@ -204,7 +204,7 @@
   
   <div class="info">
           <h4>欢迎来到手势控制的星系</h4>
-          <p>• 左手握拳再展开：重置星系<br>
+          <p>• 左手握拳再展开：切换连线显示<br>
              • 右手握拳再展开：触发超新星<br>
              • 挥动双手：引导粒子运动<br>
              • 使用控制台调整参数<br>
@@ -282,7 +282,8 @@
                       leftHandClosed = isClosed;
                       // 检测左手握拳到展开的动作
                       if (leftHandPrevClosed && !leftHandClosed) {
-                          createParticles(); // 重置星系
+                          showConnections = !showConnections;
+                          document.getElementById('showConnections').checked = showConnections;
                       }
                   } else {
                       rightHandPrevClosed = rightHandClosed;
