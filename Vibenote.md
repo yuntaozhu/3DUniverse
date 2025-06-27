@@ -9,6 +9,10 @@ Git 是一个版本控制系统，就像是一个超级强大的"时光机"。�
 
 想象一下，Git 就像是一个智能的文档管理助手，它会记住你每次保存文件时的样子，并且可以让多个人同时编辑同一份文档，最后再把所有人的修改整合到一起。
 
+## Git 的诞生小故事
+
+这是一个有趣的历史：Git 的诞生源于一个开源社区的"危机"。在 2005 年之前，Linux 系统的代码是由一个叫 BitKeeper 的商业软件来管理的。但是后来 BitKeeper 公司不再免费提供使用权，这让 Linux 的创始人 Linus Torvalds 很苦恼。于是，他用了短短两周时间，亲自开发出了 Git 这个工具。一个月后，Linux 系统的代码就开始使用 Git 来管理了！
+
 ## 基本概念解释
 
 在开始之前，让我们先了解一些基础概念：
@@ -137,5 +141,20 @@ git push origin main
 3. **保持沟通**
    - 在开始修改一个文件前，告诉团队成员
    - 完成修改后，也要通知相关同事
+
+## 推荐的学习资源
+
+如果你想深入学习 Git，这里有一些很好的免费资源：
+
+1. **新手入门教程**
+<mcreference link="https://product.hubspot.com/blog/git-and-github-tutorial-for-beginners" index="1">- An Intro to Git and GitHub for Beginners (Tutorial)：一篇非常适合初学者的 Git 和 GitHub 入门教程，从安装、创建仓库到提交和发起 Pull Request，一步步带你熟悉基本操作。</mcreference>
+
+2. **用 GitHub 创建博客**
+<mcreference link="https://github.com/skills/github-pages" index="2">- GitHub Pages 官方教程：教你如何使用 GitHub Pages 免费创建个人网站或博客，这是一个非常实用的技能。</mcreference>
+<mcreference link="https://medium.com/@cdndns/how-to-use-github-create-your-free-blog-55a544192f08" index="4">- How to use GitHub to create your free blog：一篇在 Medium 上的文章，详细介绍了如何利用 GitHub 和 Jekyll 搭建免费博客。</mcreference>
+
+3. **官方博客和最新动态**
+<mcreference link="https://github.blog/" index="3">- The GitHub Blog：GitHub 官方博客，可以了解到最新的功能更新、技术分享和社区动态。</mcreference>
+<mcreference link="https://github.blog/latest/" index="5">- The latest blogs from GitHub：GitHub 官方博客的最新文章列表，可以随时跟进最新的技术趋势。</mcreference>
 
 记住：每个人都是从新手开始的，多实践、多提问，慢慢就会熟悉这些操作了！
