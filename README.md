@@ -29,4 +29,4 @@
 
 1.  下载 `3Duniverse.html` 文件。
 2.  在现代网络浏览器中打开该文件。
-3.  确保您的计算机已连接摄像头，并授予浏览器访问摄像头的权限。[README.md](https://github.com/user-attachments/files/20929100/README.md)
+3.  确保您的计算机已连接摄像头，并授予浏览器访问摄像头的权限。
